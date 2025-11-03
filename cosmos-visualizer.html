@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Cosmos Visualizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            pointer-events: auto;
+            touch-action: none;
+        }
+
+        .ui-panel {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            backdrop-filter: blur(10px);
+            pointer-events: auto;
+            z-index: 100;
+        }
+
+        .controls-panel {
+            top: 10px;
+            left: 10px;
+            max-width: 300px;
+        }
+
+        .info-panel {
+            bottom: 10px;
+            left: 10px;
+            max-width: 350px;
+        }
+
+        .help-panel {
+            bottom: 10px;
+            right: 10px;
+            max-width: 280px;
+            font-size: 11px;
+        }
+
+        .panel-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #666;
+            padding-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+        }
+
+        .control-label {
+            display: block;
+            margin-bottom: 4px;
+            color: #aaa;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            cursor: pointer;
+        }
+
+        input[type="file"] {
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #0052a3;
+        }
+
+        button:active {
+            background: #003d7a;
+        }
+
+        .toggle-button {
+            background: #444;
+            padding: 4px 8px;
+            font-size: 10px;
+            min-width: 50px;
+        }
+
+        .toggle-button.active {
+            background: #0066cc;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 4px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .stat-label {
+            color: #999;
+        }
+
+        .stat-value {
+            color: #0f0;
+            font-weight: bold;
+        }
+
+        .help-text {
+            line-height: 1.5;
+            color: #ccc;
+        }
+
+        .help-section {
+            margin-bottom: 8px;
+        }
+
+        .help-title {
+            color: #0f0;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        .help-item {
+            margin: 2px 0;
+            padding-left: 12px;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #0f0;
+            z-index: 200;
+            font-family: 'Courier New', monospace;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid #333;
+            border-top: 3px solid #0f0;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-panel {
+            background: rgba(200, 0, 0, 0.8);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 300px;
+            text-align: center;
+            z-index: 250;
+        }
+
+        .error-panel button {
+            margin-top: 10px;
+        }
+
+        @media (max-width: 600px) {
+            .ui-panel {
+                font-size: 11px;
+                padding: 10px;
+            }
+
+            .controls-panel {
+                max-width: 200px;
+                top: 5px;
+                left: 5px;
+            }
+
+            .info-panel {
+                max-width: 250px;
+                bottom: 5px;
+                left: 5px;
+            }
+
+            .help-panel {
+                max-width: 200px;
+                bottom: 5px;
+                right: 5px;
+                font-size: 9px;
+            }
+
+            input[type="file"] {
+                font-size: 9px;
+            }
+
+            button {
+                padding: 4px 8px;
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <div class="ui-panel controls-panel">
+        <div class="panel-title">🎮 Controls</div>
+
+        <div class="control-group">
+            <label class="control-label">Load Catalog:</label>
+            <input type="file" id="fileInput" accept=".json" />
+        </div>
+
+        <div class="control-group">
+            <label class="control-label">Star Scale:</label>
+            <div class="control-row">
+                <input type="range" id="starScale" min="0.1" max="5" step="0.1" value="1" />
+                <span id="scaleValue">1.0x</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label class="control-label">Brightness:</label>
+            <div class="control-row">
+                <input type="range" id="brightness" min="0.1" max="3" step="0.1" value="1" />
+                <span id="brightnessValue">1.0x</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label class="control-label">View:</label>
+            <div class="control-row">
+                <button class="toggle-button active" data-view="orbit">Orbit</button>
+                <button class="toggle-button" data-view="free">Free</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <button id="resetView">Reset View</button>
+        </div>
+
+        <div class="control-group">
+            <button id="togglePause">Pause Auto-Rotate</button>
+        </div>
+    </div>
+
+    <div class="ui-panel info-panel">
+        <div class="panel-title">ℹ️ Star Info</div>
+        <div id="starInfo">
+            <div class="stat-row">
+                <span class="stat-label">Status:</span>
+                <span class="stat-value">Ready</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Stars:</span>
+                <span class="stat-value" id="starCount">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">FPS:</span>
+                <span class="stat-value" id="fps">60</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Zoom:</span>
+                <span class="stat-value" id="zoomLevel">1.0x</span>
+            </div>
+            <hr style="margin: 8px 0; border: none; border-top: 1px solid #444;">
+            <div id="selectedStar" style="margin-top: 8px;">
+                <span class="stat-label">Click a star for info</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="ui-panel help-panel">
+        <div class="panel-title">❓ Help</div>
+        <div class="help-text">
+            <div class="help-section">
+                <div class="help-title">Desktop:</div>
+                <div class="help-item">🖱️ Drag: Rotate</div>
+                <div class="help-item">⌚ Scroll: Zoom</div>
+                <div class="help-item">⌨️ Arrow: Pan</div>
+                <div class="help-item">🖱️ Click: Select star</div>
+            </div>
+            <div class="help-section">
+                <div class="help-title">Mobile:</div>
+                <div class="help-item">👆 Drag: Rotate</div>
+                <div class="help-item">✌️ Pinch: Zoom</div>
+                <div class="help-item">👆 Tap: Select star</div>
+            </div>
+            <div class="help-section">
+                <div class="help-title">Units:</div>
+                <div class="help-item">Parsecs (3.26 ly)</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingIndicator" class="loading" style="display: none;">
+        <div class="loading-spinner"></div>
+        <div>Loading stars...</div>
+    </div>
+
+    <div id="errorPanel" class="ui-panel error-panel" style="display: none;">
+        <div id="errorMessage"></div>
+    </div>
+
+    <script>
+        // ==================== Configuration ====================
+        const CONFIG = {
+            defaultFile: 'bsc5p_3d.json',
+            maxStars: 10000,
+            starGeometry: null,
+            pointMaterial: null
+        };
+
+        // ==================== Application State ====================
+        let state = {
+            scene: null,
+            camera: null,
+            renderer: null,
+            controls: null,
+            stars: [],
+            starMesh: null,
+            selectedStar: null,
+            paused: false,
+            autoRotate: true,
+            viewMode: 'orbit',
+            euler: null,  // For first-person camera rotation
+            stats: {
+                fps: 0,
+                lastTime: performance.now(),
+                frameCount: 0
+            }
+        };
+
+        // ==================== UI Event Handlers ====================
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+        document.getElementById('starScale').addEventListener('input', handleStarScaleChange);
+        document.getElementById('brightness').addEventListener('input', handleBrightnessChange);
+        document.getElementById('resetView').addEventListener('click', resetCamera);
+        document.getElementById('togglePause').addEventListener('click', toggleAutoRotate);
+
+        document.querySelectorAll('[data-view]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                state.viewMode = e.target.dataset.view;
+            });
+        });
+
+        // ==================== File Handling ====================
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    loadStars(data);
+                } catch (err) {
+                    showError('Failed to parse JSON file: ' + err.message);
+                }
+            };
+            reader.onerror = () => {
+                showError('Failed to read file');
+            };
+            reader.readAsText(file);
+        }
+
+        // ==================== Three.js Initialization ====================
+        function initThreeJS() {
+            const container = document.getElementById('canvas-container');
+
+            state.scene = new THREE.Scene();
+            state.scene.background = new THREE.Color(0x000005);
+            state.scene.fog = new THREE.Fog(0x000005, 5000, 10000);
+
+            state.camera = new THREE.PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                100000
+            );
+            state.camera.position.set(0, 0, 200);  // Start back to see the cosmos
+            state.camera.lookAt(0, 0, 0);
+
+            // Initialize Euler for first-person controls with YXZ order
+            state.euler = new THREE.Euler(0, 0, 0, 'YXZ');
+
+            state.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            state.renderer.setSize(window.innerWidth, window.innerHeight);
+            state.renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(state.renderer.domElement);
+
+            // Add subtle lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            state.scene.add(ambientLight);
+
+            const pointLight = new THREE.PointLight(0xffffff, 0.8);
+            pointLight.position.set(1000, 1000, 1000);
+            state.scene.add(pointLight);
+
+            // Add starfield background
+            addStarfieldBackground();
+
+            // Initialize controls
+            initializeControls();
+
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+
+            // Start animation loop
+            animate();
+        }
+
+        function addStarfieldBackground() {
+            // Create a distant starfield as backdrop
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(300 * 3);
+            const colors = new Float32Array(300 * 3);
+
+            for (let i = 0; i < 300; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 40000;
+                positions[i * 3 + 1] = (Math.random() - 0.5) * 40000;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 40000;
+
+                const color = new THREE.Color().setHSL(Math.random() * 0.2 + 0.1, 0.5, 0.6);
+                colors[i * 3] = color.r;
+                colors[i * 3 + 1] = color.g;
+                colors[i * 3 + 2] = color.b;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 50,
+                vertexColors: true,
+                sizeAttenuation: true,
+                transparent: true,
+                opacity: 0.3
+            });
+
+            const starfield = new THREE.Points(geometry, material);
+            state.scene.add(starfield);
+        }
+
+        function addEmptySphereBoundary() {
+            // Create wireframe sphere representing the boundary of empty space at origin
+            const boundaryRadius = 50;  // The radius of the empty space sphere
+            state.emptySphereBoundaryRadius = boundaryRadius;
+
+            const geometry = new THREE.IcosahedronGeometry(boundaryRadius, 4);
+            const wireframe = new THREE.WireframeGeometry(geometry);
+
+            const material = new THREE.LineBasicMaterial({
+                color: 0x4488ff,
+                opacity: 0.3,
+                transparent: true,
+                linewidth: 1
+            });
+
+            const lines = new THREE.LineSegments(wireframe, material);
+            lines.position.set(0, 0, 0);
+            state.scene.add(lines);
+
+            // Store the boundary sphere for reference
+            state.boundaryLines = lines;
+        }
+
+        // ==================== Star Loading ====================
+        function loadStars(data) {
+            showLoading(true);
+
+            setTimeout(() => {
+                try {
+                    if (!Array.isArray(data)) {
+                        throw new Error('Data is not an array');
+                    }
+
+                    // Validate and filter stars
+                    const validStars = data.filter((star, idx) => {
+                        if (!star || typeof star !== 'object') return false;
+                        if (typeof star.x !== 'number' || typeof star.y !== 'number' || typeof star.z !== 'number') {
+                            console.warn(`Star ${idx} has invalid coordinates`);
+                            return false;
+                        }
+                        return true;
+                    });
+
+                    if (validStars.length === 0) {
+                        throw new Error('No valid stars found in data');
+                    }
+
+                    console.log(`Loaded ${validStars.length} valid stars (filtered from ${data.length} total)`);
+
+                    const stars = validStars.slice(0, CONFIG.maxStars);
+                    state.stars = stars;
+
+                    createStarMesh(stars);
+                    updateStarCount();
+                    showLoading(false);
+                } catch (err) {
+                    console.error('Star loading error:', err);
+                    showError('Error loading stars: ' + err.message);
+                    showLoading(false);
+                }
+            }, 100);
+        }
+
+        function createStarTexture() {
+            // Create a canvas-based texture for glowing stars
+            const size = 64;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Create radial gradient for glow effect
+            const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');      // White center
+            gradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.8)');
+            gradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.4)');
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');      // Transparent edges
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            return texture;
+        }
+
+        function createStarMesh(stars) {
+            // Remove old mesh
+            if (state.starMesh) {
+                state.scene.remove(state.starMesh);
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(stars.length * 3);
+            const colors = new Float32Array(stars.length * 3);
+            const sizes = new Float32Array(stars.length);
+
+            // Find maximum distance for camera positioning
+            let maxDist = 0;
+
+            stars.forEach((star, i) => {
+                // Use original coordinates directly - no repositioning
+                positions[i * 3] = star.x;
+                positions[i * 3 + 1] = star.y;
+                positions[i * 3 + 2] = star.z;
+
+                // Track max distance for camera
+                const dist = Math.sqrt(star.x * star.x + star.y * star.y + star.z * star.z);
+                maxDist = Math.max(maxDist, dist);
+
+                // Use full spectral colors for beautiful colored stars
+                const color = star.K || { r: 1, g: 1, b: 1 };
+                const r = typeof color.r === 'number' ? color.r : 1;
+                const g = typeof color.g === 'number' ? color.g : 1;
+                const b = typeof color.b === 'number' ? color.b : 1;
+
+                // Use full color with additive blending for luminosity
+                colors[i * 3] = r;
+                colors[i * 3 + 1] = g;
+                colors[i * 3 + 2] = b;
+
+                // Size based on magnitude (brightness)
+                // Lower magnitude = brighter = larger glow
+                const magnitude = Math.max(0, 6 - (star.N || 6)) / 6;
+                sizes[i] = Math.max(2, magnitude * 8);  // Increased size range for better glow
+            });
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+            const starTexture = createStarTexture();
+
+            const material = new THREE.PointsMaterial({
+                size: 1.5,
+                map: starTexture,
+                vertexColors: true,
+                sizeAttenuation: true,
+                transparent: true,
+                opacity: 1,
+                blending: THREE.AdditiveBlending,  // Creates natural glow effect
+                depthWrite: false  // Prevents stars from blocking each other
+            });
+
+            state.starMesh = new THREE.Points(geometry, material);
+            state.scene.add(state.starMesh);
+
+            // Store references for raycasting
+            state.starMesh.userData.stars = stars;
+
+            // Auto-fit camera to view all stars
+            if (maxDist > 0) {
+                state.camera.position.z = maxDist * 1.5;
+            }
+        }
+
+        // ==================== Controls ====================
+        function initializeControls() {
+            let isDragging = false;
+            let hasDragged = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            let dragStartPosition = { x: 0, y: 0 };
+            let touchDistance = 0;
+
+            // Debug: log that controls are initialized
+            console.log('Controls initialized. Canvas element:', state.renderer.domElement);
+
+            // Mouse events - track drag state globally, simplified version
+            state.renderer.domElement.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                hasDragged = false;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+                dragStartPosition = { x: e.clientX, y: e.clientY };
+                console.log('Mouse down at:', previousMousePosition);
+            });
+
+            state.renderer.domElement.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+
+                // Check if we've moved enough to be considered a drag
+                const dragDistance = Math.hypot(
+                    e.clientX - dragStartPosition.x,
+                    e.clientY - dragStartPosition.y
+                );
+
+                if (dragDistance > 3) {
+                    hasDragged = true;
+                    console.log('Dragging! Distance:', dragDistance, 'Delta:', deltaX, deltaY);
+                    rotateCamera(deltaX * 0.02, deltaY * 0.02);  // Increased sensitivity
+                }
+
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    console.log('Mouse up. hasDragged:', hasDragged);
+                }
+                isDragging = false;
+            });
+
+            state.renderer.domElement.addEventListener('click', (e) => {
+                console.log('Click event. hasDragged:', hasDragged);
+                // Only select if we didn't actually drag
+                if (hasDragged) return;
+                selectStarAtMouse(e);
+            });
+
+            // Mouse wheel zoom
+            state.renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomSpeed = 0.1;
+                const zoomAmount = e.deltaY > 0 ? 1 + zoomSpeed : 1 - zoomSpeed;
+                state.camera.position.multiplyScalar(zoomAmount);
+                updateZoomDisplay();
+            });
+
+            // Touch events
+            state.renderer.domElement.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                } else if (e.touches.length === 2) {
+                    touchDistance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                }
+            });
+
+            state.renderer.domElement.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+
+                if (e.touches.length === 1) {
+                    const deltaX = e.touches[0].clientX - previousMousePosition.x;
+                    const deltaY = e.touches[0].clientY - previousMousePosition.y;
+                    rotateCamera(deltaX * 0.008, deltaY * 0.008);
+                    previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                } else if (e.touches.length === 2) {
+                    const newDistance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    const zoomSpeed = 0.01;
+                    const zoomAmount = 1 + (newDistance - touchDistance) * zoomSpeed;
+                    state.camera.position.multiplyScalar(zoomAmount);
+                    touchDistance = newDistance;
+                    updateZoomDisplay();
+                }
+            });
+
+            state.renderer.domElement.addEventListener('touchend', () => {
+                touchDistance = 0;
+            });
+
+            // Keyboard events
+            const keysPressed = {};
+            window.addEventListener('keydown', (e) => {
+                keysPressed[e.key.toLowerCase()] = true;
+                handleKeyboardInput(keysPressed);
+            });
+
+            window.addEventListener('keyup', (e) => {
+                keysPressed[e.key.toLowerCase()] = false;
+            });
+        }
+
+        function rotateCamera(deltaX, deltaY) {
+            if (state.viewMode === 'orbit') {
+                // Rotate camera around scene origin
+                const position = state.camera.position.clone();
+                const radius = position.length();
+
+                // Convert to spherical coordinates
+                let phi = Math.acos(position.y / radius);
+                let theta = Math.atan2(position.z, position.x);
+
+                // Apply rotation
+                theta -= deltaX;
+                phi -= deltaY;
+
+                // Clamp phi to avoid flipping
+                phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi));
+
+                // Convert back to Cartesian
+                position.x = radius * Math.sin(phi) * Math.cos(theta);
+                position.y = radius * Math.cos(phi);
+                position.z = radius * Math.sin(phi) * Math.sin(theta);
+
+                state.camera.position.copy(position);
+                state.camera.lookAt(0, 0, 0);
+
+            } else if (state.viewMode === 'free') {
+                // First-person style rotation using YXZ Euler order
+                // Accumulate rotation in persistent euler object
+                state.euler.y -= deltaX;
+                state.euler.x -= deltaY;
+
+                // Clamp pitch to prevent flipping (±60 degrees)
+                state.euler.x = Math.max(-1.0472, Math.min(1.0472, state.euler.x));
+
+                // Apply euler rotation to camera
+                state.camera.quaternion.setFromEuler(state.euler);
+            }
+        }
+
+        function handleKeyboardInput(keysPressed) {
+            const moveSpeed = 5;
+
+            if (keysPressed['arrowup'] || keysPressed['w']) {
+                state.camera.position.y += moveSpeed;
+            }
+            if (keysPressed['arrowdown'] || keysPressed['s']) {
+                state.camera.position.y -= moveSpeed;
+            }
+            if (keysPressed['arrowleft'] || keysPressed['a']) {
+                state.camera.position.x -= moveSpeed;
+            }
+            if (keysPressed['arrowright'] || keysPressed['d']) {
+                state.camera.position.x += moveSpeed;
+            }
+            if (keysPressed['+'] || keysPressed['=']) {
+                state.camera.position.multiplyScalar(0.95);
+                updateZoomDisplay();
+            }
+            if (keysPressed['-']) {
+                state.camera.position.multiplyScalar(1.05);
+                updateZoomDisplay();
+            }
+        }
+
+        function selectStarAtMouse(event) {
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, state.camera);
+            const intersects = raycaster.intersectObject(state.starMesh);
+
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                const stars = state.starMesh.userData.stars;
+
+                // Find closest star to intersection point
+                let closest = null;
+                let closestDist = Infinity;
+
+                stars.forEach(star => {
+                    const dist = Math.hypot(
+                        star.x - point.x,
+                        star.y - point.y,
+                        star.z - point.z
+                    );
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closest = star;
+                    }
+                });
+
+                if (closest && closestDist < 50) {
+                    displayStarInfo(closest);
+                }
+            }
+        }
+
+        function displayStarInfo(star) {
+            state.selectedStar = star;
+            const distance = Math.sqrt(star.x * star.x + star.y * star.y + star.z * star.z);
+            const distanceLY = (distance * 3.26156).toFixed(2);
+
+            // Handle missing properties
+            const color = star.K || { r: 1, g: 1, b: 1 };
+            const magnitude = typeof star.N === 'number' ? star.N.toFixed(2) : 'N/A';
+            const colorRGB = `rgb(${Math.round((color.r || 1)*255)}, ${Math.round((color.g || 1)*255)}, ${Math.round((color.b || 1)*255)})`;
+
+            document.getElementById('selectedStar').innerHTML = `
+                <div class="stat-row">
+                    <span class="stat-label">Name:</span>
+                    <span class="stat-value">${star.n || 'Unknown'}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Magnitude:</span>
+                    <span class="stat-value">${magnitude}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Distance:</span>
+                    <span class="stat-value">${distance.toFixed(1)} pc</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Distance (ly):</span>
+                    <span class="stat-value">${distanceLY}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Position:</span>
+                    <span class="stat-value" style="font-size: 10px">(${star.x.toFixed(1)}, ${star.y.toFixed(1)}, ${star.z.toFixed(1)})</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Color:</span>
+                    <div style="width: 20px; height: 20px; background: ${colorRGB}; border-radius: 3px; border: 1px solid #666;"></div>
+                </div>
+            `;
+        }
+
+        // ==================== UI Updates ====================
+        function handleStarScaleChange(e) {
+            const scale = parseFloat(e.target.value);
+            document.getElementById('scaleValue').textContent = scale.toFixed(1) + 'x';
+
+            if (state.starMesh) {
+                const sizes = state.starMesh.geometry.attributes.size.array;
+                state.stars.forEach((star, i) => {
+                    const magnitude = Math.max(0, 6 - star.N) / 6;
+                    sizes[i] = Math.max(0.5, magnitude * 3 * scale);
+                });
+                state.starMesh.geometry.attributes.size.needsUpdate = true;
+            }
+        }
+
+        function handleBrightnessChange(e) {
+            const brightness = parseFloat(e.target.value);
+            document.getElementById('brightnessValue').textContent = brightness.toFixed(1) + 'x';
+
+            if (state.starMesh) {
+                state.starMesh.material.opacity = Math.min(1, 0.9 * brightness);
+            }
+        }
+
+        function resetCamera() {
+            state.camera.position.set(0, 0, 200);
+            state.camera.quaternion.set(0, 0, 0, 1);
+            state.camera.lookAt(0, 0, 0);
+            state.euler.set(0, 0, 0);  // Reset euler angles
+            updateZoomDisplay();
+        }
+
+        function toggleAutoRotate() {
+            state.autoRotate = !state.autoRotate;
+            document.getElementById('togglePause').textContent =
+                state.autoRotate ? 'Pause Auto-Rotate' : 'Resume Auto-Rotate';
+        }
+
+        function updateStarCount() {
+            document.getElementById('starCount').textContent = state.stars.length.toLocaleString();
+        }
+
+        function updateZoomDisplay() {
+            const initialDist = 200;
+            const currentDist = state.camera.position.length();
+            const zoom = (initialDist / currentDist).toFixed(2);
+            document.getElementById('zoomLevel').textContent = zoom + 'x';
+        }
+
+        function updateFPS() {
+            const now = performance.now();
+            const delta = now - state.stats.lastTime;
+            state.stats.frameCount++;
+
+            if (delta >= 1000) {
+                state.stats.fps = Math.round(state.stats.frameCount * 1000 / delta);
+                document.getElementById('fps').textContent = state.stats.fps;
+                state.stats.frameCount = 0;
+                state.stats.lastTime = now;
+            }
+        }
+
+        // ==================== Animation Loop ====================
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (state.autoRotate && state.viewMode === 'orbit') {
+                state.camera.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.0005);
+            }
+
+            state.renderer.render(state.scene, state.camera);
+            updateFPS();
+        }
+
+        function onWindowResize() {
+            state.camera.aspect = window.innerWidth / window.innerHeight;
+            state.camera.updateProjectionMatrix();
+            state.renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // ==================== Utilities ====================
+        function showLoading(show) {
+            document.getElementById('loadingIndicator').style.display = show ? 'block' : 'none';
+        }
+
+        function showError(message) {
+            const panel = document.getElementById('errorPanel');
+            document.getElementById('errorMessage').textContent = message;
+            panel.style.display = 'block';
+
+            setTimeout(() => {
+                panel.style.display = 'none';
+            }, 5000);
+        }
+
+        // ==================== Initialization ====================
+        window.addEventListener('load', () => {
+            initThreeJS();
+
+            // Try to load default file if it exists
+            fetch(CONFIG.defaultFile)
+                .then(response => response.json())
+                .then(data => loadStars(data))
+                .catch(() => {
+                    console.log('Default file not found. Use file input to load catalog.');
+                });
+        });
+    </script>
+</body>
+</html>
