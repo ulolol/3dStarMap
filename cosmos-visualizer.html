@@ -730,7 +730,7 @@
                         e.touches[0].clientY - e.touches[1].clientY
                     );
                     const zoomSpeed = 0.01;
-                    const zoomAmount = 1 + (newDistance - touchDistance) * zoomSpeed;
+                    const zoomAmount = 1 + (touchDistance - newDistance) * zoomSpeed;
                     state.camera.position.multiplyScalar(zoomAmount);
                     touchDistance = newDistance;
                     updateZoomDisplay();
