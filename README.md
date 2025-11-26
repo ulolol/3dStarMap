@@ -1,5 +1,9 @@
 # 🌌 3D Cosmos Visualizer
 
+![3D Cosmos Visualizer](3dstarmap-logo.gif)
+
+
+
 An interactive, portable 3D star catalog visualizer that works on any device—PC, tablet, or mobile phone. No installation, no dependencies, just open and explore.
 
 ## Features
