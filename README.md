@@ -1,6 +1,6 @@
 # 🌌 3D Cosmos Visualizer
 
-![3D Cosmos Visualizer](3dstarmap-logo.gif)
+![3D Cosmos Visualizer](3dstarmap02.processed_github.gif)
 
 
 
