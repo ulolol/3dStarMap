@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -185,8 +186,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .error-panel {
@@ -241,6 +247,7 @@
         }
     </style>
 </head>
+
 <body>
     <div id="canvas-container"></div>
 
@@ -861,7 +868,7 @@
             // Handle missing properties
             const color = star.K || { r: 1, g: 1, b: 1 };
             const magnitude = typeof star.N === 'number' ? star.N.toFixed(2) : 'N/A';
-            const colorRGB = `rgb(${Math.round((color.r || 1)*255)}, ${Math.round((color.g || 1)*255)}, ${Math.round((color.b || 1)*255)})`;
+            const colorRGB = `rgb(${Math.round((color.r || 1) * 255)}, ${Math.round((color.g || 1) * 255)}, ${Math.round((color.b || 1) * 255)})`;
 
             document.getElementById('selectedStar').innerHTML = `
                 <div class="stat-row">
@@ -958,7 +965,19 @@
             requestAnimationFrame(animate);
 
             if (state.autoRotate && state.viewMode === 'orbit') {
-                state.camera.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.0005);
+                // Dynamic rotation speed based on zoom level
+                // Closer = faster, Further = slower
+                const currentDist = state.camera.position.length();
+                const baseSpeed = 0.0005;
+                const referenceDist = 200; // The initial distance
+
+                // Calculate speed multiplier (inverse relationship)
+                // Limit the multiplier to avoid extreme speeds
+                const speedMultiplier = Math.max(0.2, Math.min(5.0, referenceDist / currentDist));
+                const rotationSpeed = baseSpeed * speedMultiplier;
+
+                state.camera.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotationSpeed);
+                state.camera.lookAt(0, 0, 0);
             }
 
             state.renderer.render(state.scene, state.camera);
@@ -1000,4 +1019,5 @@
         });
     </script>
 </body>
+
 </html>
